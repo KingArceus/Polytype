@@ -7,6 +7,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Một không gian yên tĩnh để luyện gõ, học từ vựng và khám phá những ngôn ngữ mới.">
   <title>Polytype — Không gian luyện gõ của bạn</title>
+  <script src="theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;450;500;550;600;650;700;750;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -46,7 +47,15 @@
   <div class="workspace">
     <header class="topbar">
       <div class="breadcrumb"><span>Không gian của bạn</span><span class="breadcrumb-slash">/</span><span>Luyện gõ</span></div>
-      <div class="topbar-actions"><button id="soundToggleBtn" class="sound-toggle" type="button" aria-pressed="true" aria-label="Âm thanh bàn phím" title="Bật hoặc tắt âm thanh bàn phím"><svg id="soundIcon" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m11 4-6 5H2v6h3l6 5V4Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-muted" d="m16 9 6 6m0-6-6 6"/></svg><span id="soundText">Âm thanh bật</span></button><span class="topbar-divider"></span><span class="workspace-label"><span class="status-dot"></span>Góc tập trung</span></div>
+      <div class="topbar-actions">
+        <button id="soundToggleBtn" class="sound-toggle" type="button" aria-pressed="true" aria-label="Âm thanh bàn phím" title="Bật hoặc tắt âm thanh bàn phím"><svg id="soundIcon" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m11 4-6 5H2v6h3l6 5V4Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-muted" d="m16 9 6 6m0-6-6 6"/></svg><span id="soundText">Âm thanh bật</span></button>
+        <button id="themeToggleBtn" class="theme-toggle" type="button" role="switch" aria-checked="true" aria-label="Giao diện tối" title="Chuyển sang giao diện sáng">
+          <span class="theme-toggle-thumb" aria-hidden="true"></span>
+          <svg class="theme-toggle-sun icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+          <svg class="theme-toggle-moon icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.4 8.5 8.5 0 1 0 20.5 13.5Z"/></svg>
+        </button>
+        <span class="topbar-divider"></span><span class="workspace-label"><span class="status-dot"></span>Góc tập trung</span>
+      </div>
     </header>
 
     <main id="mainContent" class="main-content">

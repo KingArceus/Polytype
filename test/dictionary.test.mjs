@@ -74,6 +74,37 @@ async function serve(t, options) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 
+test('seeded sessions shuffle the full list and page without repeats', async (t) => {
+  const data = await fixture();
+  const base = await serve(t, { databasePath: data.filename });
+  t.after(data.cleanup);
+  const batch = async (seed, offset = 0, limit = 100) => {
+    const response = await fetch(`${base}/api/words?language=en&seed=${seed}&offset=${offset}&limit=${limit}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const orders = new Set();
+  for (const seed of [0, 1, 2, 3, 4294967295]) {
+    const full = await batch(seed);
+    assert.equal(full.total, 3);
+    assert.deepEqual(full.words.map((word) => word.id).sort((a, b) => a - b), [1, 2, 13]);
+    orders.add(full.words.map((word) => word.id).join(','));
+    const pages = [];
+    for (let offset = 0; offset < full.total; offset++) {
+      pages.push(...(await batch(seed, offset, 1)).words);
+    }
+    assert.deepEqual(pages, full.words);
+    // Another session can replace the cache without changing this session's order.
+    await batch(seed === 0 ? 1 : 0);
+    assert.deepEqual((await batch(seed)).words, full.words);
+    assert.deepEqual((await batch(seed, full.total)).words, []);
+  }
+  assert.ok(orders.size > 1, 'different seeds must produce different orders');
+  for (const seed of ['', '-1', '1.5', 'Infinity', '4294967296', 'abc']) {
+    assert.equal((await fetch(`${base}/api/words?language=en&seed=${seed}`)).status, 400, seed);
+  }
+});
+
 test('API exposes dictionary-backed languages, bounded pages, and static application files', async (t) => {
   const data = await fixture();
   const base = await serve(t, { databasePath: data.filename });
@@ -126,4 +157,23 @@ test('real dictionary serves all configured languages and preserves source word 
     const next = await (await fetch(`${base}/api/words?language=${language.id}&offset=2&limit=2`)).json();
     assert.ok(next.words.every((word) => !first.words.some((previous) => previous.id === word.id)));
   }
+});
+
+test('real practice rounds return 100 unique random words rather than the full dictionary', async (t) => {
+  const base = await serve(t);
+  const round = async (seed) => {
+    const response = await fetch(`${base}/api/words?language=en&offset=0&limit=100&seed=${seed}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const first = await round(1);
+  const second = await round(2);
+  assert.ok(first.total > 100);
+  assert.equal(first.words.length, 100);
+  assert.equal(second.words.length, 100);
+  const firstIds = first.words.map((word) => word.id);
+  const secondIds = second.words.map((word) => word.id);
+  assert.equal(new Set(firstIds).size, 100);
+  assert.equal(new Set(secondIds).size, 100);
+  assert.notDeepEqual([...firstIds].sort((a, b) => a - b), [...secondIds].sort((a, b) => a - b));
 });

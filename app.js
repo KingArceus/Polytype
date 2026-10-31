@@ -1,6 +1,7 @@
 (() => {
   'use strict';
 
+  const ROUND_WORD_LIMIT = 100;
   const byId = (id) => document.getElementById(id);
   const ui = Object.fromEntries([
     'langSelect', 'wordDisplayContainer', 'wordIpa', 'wordMeaning', 'wordType',
@@ -41,13 +42,10 @@
   };
 
   let languages = [];
-  const vocabularyCache = new Map();
   const keyboardKeys = new Map();
   let words = [];
   let wordIndex = 0;
-  let wordOffset = 0;
-  let wordTotal = 0;
-  let pendingOffset = 0;
+  let wordSeed = 0;
   let currentLanguageId = '';
   let input = '';
   let totalTyped = 0;
@@ -141,7 +139,8 @@
     ui.wpmDisplay.textContent = elapsedMinutes > 0.05
       ? Math.max(0, Math.round(correctTyped / 5 / elapsedMinutes)) : 0;
     ui.accuracyDisplay.textContent = `${totalTyped ? Math.round(correctTyped / totalTyped * 100) : 100}%`;
-    const position = wordTotal ? Math.min(wordOffset + wordIndex + 1, wordTotal) : 0;
+    const wordTotal = words.length;
+    const position = wordTotal ? wordIndex + 1 : 0;
     ui.countDisplay.textContent = `${position}/${wordTotal}`;
     ui.progressLabel.textContent = wordTotal ? `Từ ${position} trong ${wordTotal}` : 'Chưa có từ vựng';
     ui.progressFill.style.width = `${wordTotal ? position / wordTotal * 100 : 0}%`;
@@ -221,38 +220,29 @@
       wordIndex++;
       displayWord();
     } else {
-      const offset = wordOffset + words.length;
-      loadWordBatch(offset < wordTotal ? offset : 0);
+      switchLanguage(currentLanguageId);
     }
   }
 
-  async function loadWordBatch(offset) {
+  async function loadWordBatch() {
     const id = currentLanguageId;
     const version = ++loadVersion;
     clearAdvance();
-    pendingOffset = offset;
-    wordOffset = offset;
     wordIndex = 0;
     input = '';
     words = [];
     ui.wordDisplayContainer.setAttribute('aria-busy', 'true');
     showMessage('Đang chuẩn bị từ vựng…', 'Đang tải từ vựng');
     try {
-      let batch = offset === 0 ? vocabularyCache.get(id) : null;
-      if (!batch) {
-        const query = new URLSearchParams({ language: id, offset: String(offset), limit: '100' });
-        const response = await fetch(`/api/words?${query}`, { cache: 'no-cache' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        batch = await response.json();
-        if (!Array.isArray(batch.words) || !batch.words.length ||
-            !Number.isSafeInteger(batch.total) || batch.total < batch.words.length ||
-            batch.offset !== offset || batch.language !== id) throw new Error('Invalid vocabulary batch');
-        if (offset === 0) vocabularyCache.set(id, batch);
-      }
+      const query = new URLSearchParams({ language: id, offset: '0', limit: String(ROUND_WORD_LIMIT), seed: String(wordSeed) });
+      const response = await fetch(`/api/words?${query}`, { cache: 'no-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const batch = await response.json();
+      if (!Array.isArray(batch.words) || !batch.words.length || batch.words.length > ROUND_WORD_LIMIT ||
+          !Number.isSafeInteger(batch.total) || batch.total < batch.words.length ||
+          batch.offset !== 0 || batch.language !== id) throw new Error('Invalid vocabulary batch');
       if (version !== loadVersion) return;
       words = batch.words;
-      wordOffset = batch.offset;
-      wordTotal = batch.total;
       displayWord();
     } catch {
       if (version !== loadVersion) return;
@@ -266,13 +256,12 @@
     const language = languages.find((item) => item.id === id);
     if (!language) return;
     currentLanguageId = id;
-    wordOffset = 0;
-    wordTotal = 0;
+    wordSeed = Math.floor(Math.random() * 0x100000000);
     words = [];
     resetSession();
     ui.languageLabel.textContent = language.name;
     renderKeyboard(language.keyboardType || 'qwerty');
-    return loadWordBatch(0);
+    return loadWordBatch();
   }
 
   ui.soundToggleBtn.addEventListener('click', (event) => {
@@ -322,7 +311,7 @@
     }
   });
   ui.retryBtn.addEventListener('click', (event) => {
-    const loading = languages.length ? loadWordBatch(pendingOffset) : init();
+    const loading = languages.length ? loadWordBatch() : init();
     resumeAfterPointer(event);
     return loading;
   });

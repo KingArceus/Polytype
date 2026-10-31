@@ -8,6 +8,7 @@ export class Dictionary {
     this.db = new DatabaseSync(filename, { readOnly: true });
     this.languages = languages;
     this.wordLists = new Map();
+    this.shuffledWordLists = new Map();
     this.details = this.db.prepare(`
       SELECT w.id, w.word, COALESCE(d.definition, '') AS meaning,
              COALESCE(d.pos, '') AS type,
@@ -47,9 +48,28 @@ export class Dictionary {
     })).filter((language) => language.wordCount > 0);
   }
 
-  getWords(languageId, offset = 0, limit = 100) {
-    const ids = this.getWordIds(languageId);
+  getWords(languageId, offset = 0, limit = 100, seed = null) {
+    let ids = this.getWordIds(languageId);
     if (!ids) return null;
+    if (seed !== null) {
+      let shuffled = this.shuffledWordLists.get(languageId);
+      if (shuffled?.seed !== seed) {
+        const shuffledIds = [...ids];
+        let state = seed;
+        // Seeded Fisher–Yates keeps subsequent pages in the same random order.
+        for (let index = shuffledIds.length - 1; index > 0; index--) {
+          state = (state + 0x6d2b79f5) >>> 0;
+          let value = Math.imul(state ^ (state >>> 15), state | 1);
+          value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+          const random = ((value ^ (value >>> 14)) >>> 0) / 0x100000000;
+          const target = Math.floor(random * (index + 1));
+          [shuffledIds[index], shuffledIds[target]] = [shuffledIds[target], shuffledIds[index]];
+        }
+        shuffled = { seed, ids: shuffledIds };
+        this.shuffledWordLists.set(languageId, shuffled);
+      }
+      ids = shuffled.ids;
+    }
     return {
       language: languageId,
       offset,

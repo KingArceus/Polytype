@@ -9,7 +9,8 @@ const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
-  ['/app.js', ['app.js', 'text/javascript; charset=utf-8']]
+  ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ['/theme.js', ['theme.js', 'text/javascript; charset=utf-8']]
 ]);
 
 function json(response, status, data) {
@@ -42,12 +43,18 @@ export async function createAppServer({ databasePath = join(root, 'data/dictiona
         const limitText = url.searchParams.get('limit') ?? '100';
         const offset = Number(offsetText);
         const limit = Number(limitText);
+        const seedText = url.searchParams.get('seed');
+        const seed = seedText === null ? null : Number(seedText);
         if (!/^\d+$/.test(offsetText) || !Number.isSafeInteger(offset) ||
             !/^\d+$/.test(limitText) || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
           json(response, 400, { error: 'Use a non-negative offset and a limit between 1 and 100.' });
           return;
         }
-        const batch = dictionary.getWords(language, offset, limit);
+        if (seedText !== null && (!/^\d+$/.test(seedText) || !Number.isSafeInteger(seed) || seed > 0xffffffff)) {
+          json(response, 400, { error: 'Use a seed between 0 and 4294967295.' });
+          return;
+        }
+        const batch = dictionary.getWords(language, offset, limit, seed);
         json(response, batch ? 200 : 400, batch ?? { error: 'Unsupported language' });
         return;
       }
