@@ -1,10 +1,10 @@
 {
   "languages": [
-    { "id": "en", "name": "English", "keyboardType": "qwerty", "file": "data/en.csv" },
-    { "id": "de", "name": "Deutsch", "keyboardType": "qwertz", "file": "data/de.csv" },
-    { "id": "fr", "name": "Français", "keyboardType": "azerty", "file": "data/fr.csv" },
-    { "id": "es", "name": "Español", "keyboardType": "qwerty_es", "file": "data/es.csv" },
-    { "id": "ru", "name": "Русский", "keyboardType": "jcuken", "file": "data/ru.csv" },
-    { "id": "ja", "name": "日本語 (Romaji)", "keyboardType": "qwerty", "file": "data/ja.csv" }
+    { "id": "en", "name": "English", "keyboardType": "qwerty" },
+    { "id": "de", "name": "Deutsch", "keyboardType": "qwertz" },
+    { "id": "fr", "name": "Français", "keyboardType": "azerty" },
+    { "id": "es", "name": "Español", "keyboardType": "qwerty_es" },
+    { "id": "ru", "name": "Русский", "keyboardType": "jcuken" },
+    { "id": "ja", "name": "日本語 (Romaji)", "keyboardType": "qwerty" }
   ]
 }

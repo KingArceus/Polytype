@@ -1,545 +1,84 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Luyện Gõ Phím Đa Ngôn Ngữ</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="theme-color" content="#080f1b">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Một không gian yên tĩnh để luyện gõ, học từ vựng và khám phá những ngôn ngữ mới.">
+  <title>Polytype — Không gian luyện gõ của bạn</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            mono: ['"JetBrains Mono"', 'monospace'],
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    /* Bàn phím tham khảo (Display-only), không bắt click chuột */
-    .keyboard-key {
-      pointer-events: none;
-      transition: background-color 0.08s ease, transform 0.08s ease, box-shadow 0.08s ease;
-      user-select: none;
-    }
-    /* Đèn sáng tương ứng khi gõ phím vật lý trên máy tính */
-    .keyboard-key.physical-pressed {
-      transform: translateY(2px) scale(0.97);
-      background-color: #3b82f6 !important;
-      color: #ffffff !important;
-      border-color: #60a5fa !important;
-      box-shadow: 0 0 16px rgba(59, 130, 246, 0.7);
-    }
-    /* Gợi ý vị trí phím cần gõ tiếp theo */
-    .keyboard-key.target-hint {
-      outline: 2px solid #06b6d4;
-      outline-offset: 1px;
-      background-color: #083344 !important;
-      color: #67e8f9 !important;
-      border-color: #06b6d4 !important;
-      animation: pulse-guide 1.2s infinite alternate ease-in-out;
-    }
-    @keyframes pulse-guide {
-      0% { box-shadow: 0 0 4px #06b6d4; }
-      100% { box-shadow: 0 0 16px #06b6d4, inset 0 0 8px rgba(6, 182, 212, 0.4); }
-    }
-    .cursor-caret {
-      animation: blink 1s step-end infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;450;500;550;600;650;700;750;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
+<body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="icon-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M6.5 9h.01M10 9h.01M14 9h.01M17.5 9h.01M6.5 12.5h.01M10 12.5h.01M14 12.5h.01M17.5 12.5h.01M8 16h8"/></symbol>
+    <symbol id="icon-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v14"/></symbol>
+    <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.7c-1 .8-1.8 1.3-1.8 2.8M12 17h.01"/></symbol>
+    <symbol id="icon-restart" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2.6 8.4M3 4v6h6"/></symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="icon-speed" viewBox="0 0 24 24"><path d="M4 18a9 9 0 1 1 16 0M12 13l4-5M7 16h.01M5 11h.01M9 6h.01M15 6h.01M19 11h.01M17 16h.01"/><circle cx="12" cy="13" r="1.5"/></symbol>
+    <symbol id="icon-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="icon-layers" viewBox="0 0 24 24"><path d="m12 3 10 5-10 5L2 8l10-5ZM2 12l10 5 10-5M2 16l10 5 10-5"/></symbol>
+  </svg>
 
-  <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <rect x="2" y="4" width="20" height="16" rx="3" stroke-width="2"/>
-            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div>
-          <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">PolyglotType</h1>
-          <p class="text-xs text-slate-400">Gõ trực tiếp bằng bàn phím máy tính • Mẫu layout trực quan</p>
-        </div>
-      </div>
+  <a class="skip-link" href="#practice">Đến phần luyện gõ</a>
+  <aside class="sidebar" aria-label="Thanh điều hướng">
+    <a class="brand" href="./" aria-label="Polytype, trang chủ"><span class="brand-mark"><svg class="icon"><use href="#icon-keyboard"/></svg></span><span>Poly<span class="brand-light">type</span><small>GÕ CHỮ · MỞ THẾ GIỚI</small></span></a>
+    <div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
+    <nav class="main-nav" aria-label="Điều hướng chính">
+      <a class="nav-item is-active" href="#practice" aria-current="page" aria-label="Luyện gõ"><svg class="icon" aria-hidden="true"><use href="#icon-keyboard"/></svg><span>Luyện gõ</span><span class="nav-active-dot"></span></a>
+      <a class="nav-item" href="#keyboard" aria-label="Bố cục bàn phím"><svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg><span>Bố cục bàn phím</span></a>
+      <button class="nav-item" id="helpBtn" type="button" aria-label="Hướng dẫn luyện tập"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg><span>Hướng dẫn luyện tập</span></button>
+    </nav>
+    <div class="sidebar-note"><div class="letter-art" aria-hidden="true"><span class="letter-one">a</span><span class="letter-two">あ</span><span class="letter-three">ф</span><svg class="icon art-spark"><use href="#icon-spark"/></svg></div><p>Một chút mỗi ngày.<br><strong>Một thế giới rộng hơn.</strong></p><span>Mỗi ngôn ngữ mới bắt đầu<br>từ một phím gõ.</span></div>
+    <div class="sidebar-bottom"><span class="small-brand-mark" aria-hidden="true">p<span>t</span></span><span>Chậm lại. Gõ thật tốt.</span><span class="sidebar-bottom-dot"></span></div>
+  </aside>
 
-      <div class="flex items-center gap-3">
-        <!-- Nút Sound switch cơ -->
-        <button id="soundToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-medium text-slate-300 transition" title="Bật/Tắt âm switch cơ">
-          <span id="soundIcon">🔊</span>
-          <span id="soundText">Sound ON</span>
-        </button>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb"><span>Không gian của bạn</span><span class="breadcrumb-slash">/</span><span>Luyện gõ</span></div>
+      <div class="topbar-actions"><button id="soundToggleBtn" class="sound-toggle" type="button" aria-pressed="true" aria-label="Âm thanh bàn phím" title="Bật hoặc tắt âm thanh bàn phím"><svg id="soundIcon" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m11 4-6 5H2v6h3l6 5V4Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-muted" d="m16 9 6 6m0-6-6 6"/></svg><span id="soundText">Âm thanh bật</span></button><span class="topbar-divider"></span><span class="workspace-label"><span class="status-dot"></span>Góc tập trung</span></div>
+    </header>
 
-        <!-- Dropdown ngôn ngữ -->
-        <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 shadow-inner">
-          <span class="text-xs text-slate-400">Ngôn ngữ:</span>
-          <select id="langSelect" class="bg-transparent text-sm font-semibold text-cyan-400 focus:outline-none cursor-pointer">
-            <option value="">Đang tải danh sách...</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </header>
+    <main id="mainContent" class="main-content">
+      <div class="page-heading"><div><div class="eyebrow">LẶP LẠI NHỎ. TIẾN BỘ LỚN.</div><h1>Mỗi phím gõ, một bước tiến<span>.</span></h1><p>Luyện đôi tay, học thêm từ mới. Theo nhịp của riêng bạn.</p></div><span class="practice-mode"><svg class="icon" aria-hidden="true"><use href="#icon-spark"/></svg>Luyện tập tự do</span></div>
 
-  <!-- Khu vực hiển thị trung tâm -->
-  <main class="flex-1 max-w-5xl mx-auto w-full px-4 py-6 flex flex-col justify-between gap-6">
+      <section class="metrics" aria-label="Kết quả buổi luyện tập">
+        <div class="metric"><div class="metric-label"><svg class="icon" aria-hidden="true"><use href="#icon-speed"/></svg>Tốc độ gõ</div><div class="metric-value"><span id="wpmDisplay">0</span><span class="metric-unit">WPM</span></div><span class="metric-caption">Từng nhịp, từng tiến bộ</span></div>
+        <div class="metric"><div class="metric-label"><svg class="icon" aria-hidden="true"><use href="#icon-target"/></svg>Độ chính xác</div><div class="metric-value"><span id="accuracyDisplay">100%</span><span class="metric-check" aria-hidden="true"><svg class="icon"><use href="#icon-check"/></svg></span></div><span class="metric-caption">Chính xác trước, tốc độ sau</span></div>
+        <div class="metric"><div class="metric-label"><svg class="icon" aria-hidden="true"><use href="#icon-layers"/></svg>Tiến độ từ vựng</div><div class="metric-value"><span id="countDisplay">0/0</span><span class="metric-unit">từ</span></div><span class="metric-caption">Mỗi từ là một khám phá</span></div>
+        <div class="metric metric-layout"><div class="metric-label"><svg class="icon" aria-hidden="true"><use href="#icon-keyboard"/></svg>Bố cục bàn phím</div><div class="metric-value"><span id="layoutBadge">QWERTY</span></div><span class="metric-caption">Thay đổi theo ngôn ngữ</span></div>
+      </section>
 
-    <!-- Bảng chỉ số thống kê -->
-    <div class="grid grid-cols-4 gap-3 sm:gap-4">
-      <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-        <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">WPM</div>
-        <div id="wpmDisplay" class="text-2xl sm:text-3xl font-black font-mono text-cyan-400 mt-1">0</div>
-      </div>
-      <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-        <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Chính xác</div>
-        <div id="accuracyDisplay" class="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1">100%</div>
-      </div>
-      <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-        <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Tiến độ từ</div>
-        <div id="countDisplay" class="text-2xl sm:text-3xl font-black font-mono text-purple-400 mt-1">0/0</div>
-      </div>
-      <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-3 sm:p-4 text-center shadow-lg">
-        <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Bố cục mẫu</div>
-        <div id="layoutBadge" class="text-sm sm:text-base font-bold font-mono text-amber-400 mt-2 truncate">QWERTY</div>
-      </div>
-    </div>
+      <section id="practice" class="practice-card" aria-label="Luyện gõ từ vựng" tabindex="0">
+        <div class="practice-toolbar"><div class="section-label"><span class="accent-dot"></span>LUYỆN TỪ VỰNG<span class="toolbar-divider"></span><span id="languageLabel" class="language-caption">English</span></div><div class="practice-actions"><div class="language-control"><svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg><label class="sr-only" for="langSelect">Ngôn ngữ luyện tập</label><select id="langSelect"><option value="">Đang tải...</option></select><svg class="icon select-chevron" aria-hidden="true"><use href="#icon-chevron"/></svg></div><button id="restartBtn" class="icon-button" type="button" aria-label="Bắt đầu lại buổi luyện tập" title="Bắt đầu lại"><svg class="icon" aria-hidden="true"><use href="#icon-restart"/></svg></button></div></div>
+        <div class="word-stage"><div class="session-status"><span class="status-dot"></span><span id="sessionStatus" role="status">Đang tải từ vựng...</span></div><div id="wordDisplayContainer" class="word-display" aria-label="Từ cần gõ"></div><div class="word-details"><span id="wordIpa" class="word-ipa">—</span><span id="wordType" class="word-type">—</span></div><p id="wordMeaning" class="word-meaning">—</p><button id="retryBtn" class="retry-button" type="button" hidden>Thử tải lại<svg class="icon" aria-hidden="true"><use href="#icon-restart"/></svg></button><div class="typing-instruction"><svg class="icon" aria-hidden="true"><use href="#icon-keyboard"/></svg><span>Gõ từ phía trên bằng bàn phím của bạn</span></div></div>
+        <div class="practice-bottom"><span id="progressLabel" class="progress-label">Đang chuẩn bị...</span><button id="nextWordBtn" class="next-word" type="button">Từ tiếp theo<kbd>Space</kbd><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button></div><div class="progress-track" aria-hidden="true"><span id="progressFill"></span></div>
+      </section>
 
-    <!-- Màn hình thẻ từ vựng & IPA -->
-    <div class="relative bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center justify-center text-center overflow-hidden min-h-[220px]">
-      <div class="absolute -top-24 w-80 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <section id="keyboard" class="keyboard-section" aria-labelledby="keyboardHeading">
+        <div class="keyboard-heading"><div><h2 id="keyboardHeading"><svg class="icon" aria-hidden="true"><use href="#icon-keyboard"/></svg>Làm quen với từng phím</h2><p>Bàn phím trực quan đồng hành cùng bạn.</p></div><div class="keyboard-legend"><span><i class="legend-key"></i>Phím tiếp theo</span><span class="layout-name" id="currentLayoutName">QWERTY</span></div></div>
+        <div class="keyboard-board"><div id="virtualKeyboard" class="virtual-keyboard" aria-label="Bàn phím tham khảo, hiển thị phím cần gõ"></div></div>
+        <div class="keyboard-footnote"><span><span class="connection-dot"></span>Kết nối với bàn phím của bạn</span><span><kbd>Backspace</kbd> để sửa<span class="footnote-dot">·</span><kbd>Space</kbd> để đổi từ</span></div>
+      </section>
+      <footer class="page-footer"><span>Được tạo cho những đôi tay ham học hỏi.</span><span>Không áp lực. Chỉ có tiến bộ.<svg class="icon" aria-hidden="true"><use href="#icon-spark"/></svg></span></footer>
+    </main>
+  </div>
 
-      <div class="flex items-center gap-2 mb-2">
-        <span id="wordType" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-950 text-cyan-400 border border-cyan-800/50">noun</span>
-        <span class="text-xs text-slate-400 flex items-center gap-1.5 font-mono">
-          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          Đang lắng nghe bàn phím máy tính
-        </span>
-      </div>
-
-      <!-- Từ vựng gõ tương tác -->
-      <div id="wordDisplayContainer" class="font-mono text-4xl sm:text-5xl font-extrabold tracking-wide my-2 flex items-center justify-center flex-wrap select-none min-h-[64px]"></div>
-
-      <!-- Phiên âm IPA & Nghĩa -->
-      <div class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mt-2">
-        <div id="wordIpa" class="font-mono text-slate-400 text-base sm:text-lg tracking-normal font-medium bg-slate-800/50 px-3 py-1 rounded-xl">--</div>
-        <div id="wordMeaning" class="text-slate-200 text-base sm:text-lg font-medium">--</div>
-      </div>
-
-      <div class="mt-4 text-xs text-slate-400 flex items-center gap-1.5">
-        <span>Gõ trên bàn phím máy tính • Nhấn</span>
-        <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono">Space</kbd>
-        <span>hoặc</span>
-        <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300 font-mono">Tab</kbd>
-        <span>để đổi từ</span>
-      </div>
-    </div>
-
-    <!-- Bàn phím ảo xem mẫu -->
-    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl flex flex-col items-center">
-      <div class="w-full flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-          <span>Bản đồ bố cục phím mẫu (Hiển thị vị trí trực quan theo phím bạn bấm)</span>
-        </div>
-        <div class="font-mono">Chuẩn: <span id="currentLayoutName" class="text-cyan-400 font-bold">QWERTY</span></div>
-      </div>
-
-      <div id="virtualKeyboard" class="w-full max-w-4xl flex flex-col gap-1.5 sm:gap-2 select-none"></div>
-    </div>
-
-  </main>
-
-  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-900">
-    Hệ thống luyện gõ bàn phím ngoại ngữ chuẩn xác.
-  </footer>
-
-  <script>
-    // --- Biến trạng thái & Cache ---
-    let languagesList = [];
-    let loadedVocabCache = {};
-    let currentWords = [];
-    let currentLayout = 'qwerty';
-    let currentWordIndex = 0;
-    let userInput = '';
-    let totalTyped = 0;
-    let correctTyped = 0;
-    let startTime = null;
-    let soundEnabled = true;
-
-    // --- Web Audio API Mechanical Sound ---
-    let audioCtx = null;
-    function playKeySound(isError = false) {
-      if (!soundEnabled) return;
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        if (isError) {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(140, now);
-          osc.frequency.exponentialRampToValueAtTime(70, now + 0.12);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(now);
-          osc.stop(now + 0.13);
-        } else {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(800, now);
-          osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
-          gain.gain.setValueAtTime(0.35, now);
-          gain.gain.exponentialRampToValueAtTime(0.005, now + 0.05);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(now);
-          osc.stop(now + 0.05);
-        }
-      } catch (e) {}
-    }
-
-    // --- Định nghĩa layout chuẩn (Đức chuẩn hóa DIN 2137-1) ---
-    const KEYBOARD_LAYOUTS = {
-      qwerty: [
-        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-        ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
-        ['Space']
-      ],
-      qwertz: [
-        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'ß'],
-        ['q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'ü'],
-        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ö', 'ä'],
-        ['y', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
-        ['Space']
-      ],
-      azerty: [
-        ['a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-        ['q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm'],
-        ['w', 'x', 'c', 'v', 'b', 'n', 'é', 'è', 'ç', 'à'],
-        ['Space']
-      ],
-      qwerty_es: [
-        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'],
-        ['z', 'x', 'c', 'v', 'b', 'n', 'm', 'á', 'é', 'í', 'ó', 'ú'],
-        ['Space']
-      ],
-      jcuken: [
-        ['ё', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
-        ['й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з', 'х', 'ъ'],
-        ['ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л', 'д', 'ж', 'э'],
-        ['я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю', '.'],
-        ['Space']
-      ]
-    };
-
-    // --- DOM Elements ---
-    const langSelect = document.getElementById('langSelect');
-    const wordDisplayContainer = document.getElementById('wordDisplayContainer');
-    const wordIpa = document.getElementById('wordIpa');
-    const wordMeaning = document.getElementById('wordMeaning');
-    const wordType = document.getElementById('wordType');
-    const virtualKeyboard = document.getElementById('virtualKeyboard');
-    const wpmDisplay = document.getElementById('wpmDisplay');
-    const accuracyDisplay = document.getElementById('accuracyDisplay');
-    const countDisplay = document.getElementById('countDisplay');
-    const layoutBadge = document.getElementById('layoutBadge');
-    const currentLayoutName = document.getElementById('currentLayoutName');
-    const soundToggleBtn = document.getElementById('soundToggleBtn');
-    const soundIcon = document.getElementById('soundIcon');
-    const soundText = document.getElementById('soundText');
-
-    soundToggleBtn.addEventListener('click', () => {
-      soundEnabled = !soundEnabled;
-      soundIcon.textContent = soundEnabled ? '🔊' : '🔇';
-      soundText.textContent = soundEnabled ? 'Sound ON' : 'Sound OFF';
-      soundToggleBtn.classList.toggle('text-slate-400', !soundEnabled);
-      soundToggleBtn.classList.toggle('text-slate-300', soundEnabled);
-    });
-
-    // --- Render bàn phím hiển thị mẫu ---
-    function renderVirtualKeyboard(layoutKey) {
-      const rows = KEYBOARD_LAYOUTS[layoutKey] || KEYBOARD_LAYOUTS['qwerty'];
-      virtualKeyboard.innerHTML = '';
-      currentLayoutName.textContent = layoutKey.toUpperCase();
-      layoutBadge.textContent = layoutKey.toUpperCase();
-
-      rows.forEach(row => {
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'flex justify-center items-center gap-1 sm:gap-1.5 w-full';
-
-        row.forEach(keyChar => {
-          const keyDiv = document.createElement('div');
-          keyDiv.setAttribute('data-key', keyChar.toLowerCase());
-
-          if (keyChar === 'Space') {
-            keyDiv.className = 'keyboard-key h-10 sm:h-12 w-64 sm:w-80 bg-slate-800/90 border border-slate-700/80 rounded-lg text-slate-400 font-mono text-xs flex items-center justify-center shadow-md';
-            keyDiv.textContent = 'Space';
-          } else {
-            keyDiv.className = 'keyboard-key h-10 sm:h-12 flex-1 max-w-[54px] bg-slate-800/90 border border-slate-700/80 rounded-lg text-slate-300 font-mono text-sm sm:text-base font-bold flex items-center justify-center shadow-md';
-            keyDiv.textContent = keyChar;
-          }
-
-          rowDiv.appendChild(keyDiv);
-        });
-
-        virtualKeyboard.appendChild(rowDiv);
-      });
-    }
-
-    // --- Gợi ý phím kế tiếp trên bàn phím mẫu ---
-    function updateKeyHighlights() {
-      document.querySelectorAll('.keyboard-key.target-hint').forEach(el => {
-        el.classList.remove('target-hint');
-      });
-
-      const currentWordObj = currentWords[currentWordIndex];
-      if (!currentWordObj) return;
-
-      const targetWord = currentWordObj.word;
-      if (userInput.length < targetWord.length) {
-        const nextChar = targetWord[userInput.length].toLowerCase();
-        const targetElement = document.querySelector(`.keyboard-key[data-key="${nextChar}"]`);
-        if (targetElement) {
-          targetElement.classList.add('target-hint');
-        }
-      }
-    }
-
-    // --- Sáng đèn khi người dùng ấn phím vật lý ---
-    function highlightPhysicalKeyPress(key) {
-      const el = document.querySelector(`.keyboard-key[data-key="${key.toLowerCase()}"]`);
-      if (el) {
-        el.classList.add('physical-pressed');
-        setTimeout(() => el.classList.remove('physical-pressed'), 120);
-      }
-    }
-
-    function updateMetrics() {
-      if (!startTime && totalTyped > 0) startTime = new Date();
-      if (startTime) {
-        const elapsedMins = (new Date() - startTime) / 60000;
-        if (elapsedMins > 0.05) {
-          const wpm = Math.round((correctTyped / 5) / elapsedMins);
-          wpmDisplay.textContent = Math.max(0, wpm);
-        }
-      }
-      const acc = totalTyped === 0 ? 100 : Math.round((correctTyped / totalTyped) * 100);
-      accuracyDisplay.textContent = acc + '%';
-      countDisplay.textContent = `${currentWordIndex + 1}/${currentWords.length}`;
-    }
-
-    function displayCurrentWord() {
-      const currentWordObj = currentWords[currentWordIndex];
-      if (!currentWordObj) {
-        wordDisplayContainer.innerHTML = '<span class="text-slate-500 text-xl font-normal">Chưa có từ vựng</span>';
-        wordIpa.textContent = '--';
-        wordMeaning.textContent = '--';
-        wordType.textContent = '--';
-        return;
-      }
-
-      const targetWord = currentWordObj.word;
-      wordIpa.textContent = currentWordObj.ipa || '';
-      wordMeaning.textContent = currentWordObj.meaning || '';
-      wordType.textContent = currentWordObj.type || 'từ vựng';
-
-      wordDisplayContainer.innerHTML = '';
-
-      for (let i = 0; i < targetWord.length; i++) {
-        const charSpan = document.createElement('span');
-        const targetChar = targetWord[i];
-        charSpan.textContent = targetChar;
-        charSpan.className = 'relative px-0.5 inline-block';
-
-        if (i < userInput.length) {
-          if (userInput[i].toLowerCase() === targetChar.toLowerCase()) {
-            charSpan.classList.add('text-emerald-400');
-          } else {
-            charSpan.classList.add('text-rose-500', 'underline', 'decoration-rose-500', 'decoration-4');
-          }
-        } else if (i === userInput.length) {
-          charSpan.classList.add('text-cyan-300');
-          const cursor = document.createElement('span');
-          cursor.className = 'cursor-caret absolute -bottom-1 left-0 right-0 h-1 bg-cyan-400 rounded-full';
-          charSpan.appendChild(cursor);
-        } else {
-          charSpan.classList.add('text-slate-500');
-        }
-        wordDisplayContainer.appendChild(charSpan);
-      }
-
-      updateKeyHighlights();
-      updateMetrics();
-    }
-
-    function nextWord() {
-      userInput = '';
-      if (currentWords.length > 0) {
-        currentWordIndex = (currentWordIndex + 1) % currentWords.length;
-      }
-      displayCurrentWord();
-    }
-
-    // --- Nhận phím trực tiếp từ bàn phím máy tính ---
-    window.addEventListener('keydown', (e) => {
-      if (document.activeElement === langSelect) return;
-
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        playKeySound(false);
-        nextWord();
-        return;
-      }
-
-      if (e.key === ' ') {
-        e.preventDefault();
-        highlightPhysicalKeyPress('space');
-        playKeySound(false);
-        nextWord();
-        return;
-      }
-
-      if (e.key === 'Backspace') {
-        if (userInput.length > 0) {
-          userInput = userInput.slice(0, -1);
-          playKeySound(false);
-          displayCurrentWord();
-        }
-        return;
-      }
-
-      if (e.key.length !== 1) return;
-
-      const inputChar = e.key;
-      highlightPhysicalKeyPress(inputChar);
-
-      const currentWordObj = currentWords[currentWordIndex];
-      if (!currentWordObj) return;
-
-      const targetWord = currentWordObj.word;
-      const expectedChar = targetWord[userInput.length];
-      totalTyped++;
-
-      if (expectedChar && inputChar.toLowerCase() === expectedChar.toLowerCase()) {
-        correctTyped++;
-        userInput += inputChar;
-        playKeySound(false);
-      } else {
-        userInput += inputChar;
-        playKeySound(true);
-      }
-
-      displayCurrentWord();
-
-      if (userInput.toLowerCase() === targetWord.toLowerCase()) {
-        setTimeout(() => nextWord(), 180);
-      }
-    });
-
-    // --- Phân tích cú pháp CSV tốc độ cao (Không dùng regex nặng) ---
-    function parseCSV(text) {
-      if (!text) return [];
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length <= 1) return [];
-
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
-      const words = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        const values = line.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
-        if (values.length >= 3) {
-          words.push({
-            word: values[0] || '',
-            ipa: values[1] || '',
-            meaning: values[2] || '',
-            type: values[3] || 'từ vựng'
-          });
-        }
-      }
-      return words;
-    }
-
-    // --- Tải file CSV từ server ---
-    async function switchLanguage(langId) {
-      const langConfig = languagesList.find(l => l.id === langId);
-      if (!langConfig) return;
-
-      if (!loadedVocabCache[langId] || loadedVocabCache[langId].length === 0) {
-        try {
-          const res = await fetch(langConfig.file, { cache: 'no-cache' });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const text = await res.text();
-          loadedVocabCache[langId] = parseCSV(text);
-        } catch (err) {
-          console.error(`Lỗi nạp file CSV [${langId}]:`, err);
-        }
-      }
-
-      currentWords = loadedVocabCache[langId] || [];
-      currentLayout = langConfig.keyboardType || 'qwerty';
-      currentWordIndex = 0;
-      userInput = '';
-      totalTyped = 0;
-      correctTyped = 0;
-      startTime = null;
-
-      renderVirtualKeyboard(currentLayout);
-      displayCurrentWord();
-    }
-
-    langSelect.addEventListener('change', (e) => {
-      switchLanguage(e.target.value);
-      langSelect.blur();
-    });
-
-    // --- Khởi tạo: Đọc languages.json ---
-    async function init() {
-      try {
-        const res = await fetch('./languages.json', { cache: 'no-cache' });
-        if (!res.ok) throw new Error('Không thể tải languages.json');
-        const data = await res.json();
-        languagesList = data.languages || [];
-      } catch (err) {
-        console.error('Lỗi khi nạp danh sách ngôn ngữ:', err);
-      }
-
-      langSelect.innerHTML = '';
-      languagesList.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item.id;
-        opt.className = 'bg-slate-900 text-white';
-        opt.textContent = `${item.name} (${item.keyboardType.toUpperCase()})`;
-        langSelect.appendChild(opt);
-      });
-
-      if (languagesList.length > 0) {
-        switchLanguage(languagesList[0].id);
-      }
-    }
-
-    init();
-  </script>
+  <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
+    <div class="dialog-heading"><span class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg></span><button id="closeHelpBtn" class="icon-button" type="button" aria-label="Đóng hướng dẫn"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+    <div class="eyebrow">BẮT ĐẦU THẬT NHẸ NHÀNG</div><h2 id="helpTitle">Tìm nhịp gõ của bạn.</h2><p>Chọn một ngôn ngữ, nhìn từ vựng và gõ bằng bàn phím máy tính. Bố cục bên dưới sẽ gợi ý phím tiếp theo.</p>
+    <ol class="help-steps"><li><span>01</span><div><strong>Gõ chính xác từng chữ</strong><p>Chữ đúng chuyển xanh. Chữ sai có gạch chân; dùng <kbd>Backspace</kbd> để sửa.</p></div></li><li><span>02</span><div><strong>Tiếp tục theo nhịp của bạn</strong><p>Từ mới xuất hiện khi bạn gõ đúng. Nhấn <kbd>Space</kbd> hoặc “Từ tiếp theo” để bỏ qua.</p></div></li><li><span>03</span><div><strong>Khám phá ngôn ngữ mới</strong><p>Đổi ngôn ngữ để học từ và bố cục bàn phím khác. Bố cục trên máy cần phù hợp với ngôn ngữ bạn chọn.</p></div></li></ol>
+    <p class="help-tip"><svg class="icon" aria-hidden="true"><use href="#icon-spark"/></svg>Mẹo nhỏ: giữ đôi tay thư giãn, ưu tiên độ chính xác.</p>
+  </dialog>
 </body>
 </html>
