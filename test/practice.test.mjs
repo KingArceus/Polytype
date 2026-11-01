@@ -98,3 +98,20 @@ test('practice uses the available word count when a language has fewer than 100 
   assert.equal(requests.length, 2);
   assert.equal(get('countDisplay').textContent, '1/3');
 });
+
+test('dictionary mode suspends typing shortcuts and saving reloads the selected practice language', async () => {
+  const { get, requests, window } = await practice(3);
+  get('practicePage').hidden = true;
+  await window.fire('polytype:viewchange', { detail: { view: 'dictionary' } });
+  window.fire('keydown', { key: ' ', target: get('practice'), preventDefault() { assert.fail('hidden practice consumed a key'); } });
+  assert.equal(get('countDisplay').textContent, '1/3');
+  get('practicePage').hidden = false;
+  await window.fire('polytype:viewchange', { detail: { view: 'practice' } });
+  get('langSelect').value = 'de';
+  await get('langSelect').fire('change');
+  await window.fire('polytype:dictionary-saved');
+  await settle();
+  assert.equal(requests.at(-1).get('language'), 'de');
+  assert.equal(get('langSelect').value, 'de');
+  assert.equal(get('countDisplay').textContent, '1/3');
+});

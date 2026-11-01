@@ -8,6 +8,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { Dictionary } from '../dictionary.mjs';
 import { createAppServer } from '../server.mjs';
 
+const ADMIN_KEY = 'test-only-polytype-admin-key-32-bytes';
+
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'polytype-dictionary-'));
   const filename = join(directory, 'fixture.db');
@@ -60,11 +62,10 @@ test('dictionary filters untypeable entries and pages unique words with preferre
   assert.deepEqual(dictionary.getWords('ru').words.map((word) => word.word), ['мама']);
   assert.equal(dictionary.getWords('de').words[0].ipa, '');
   assert.equal(dictionary.getWords("en' OR 1=1 --"), null);
-  assert.throws(() => dictionary.db.exec('DELETE FROM words'), /readonly/i);
 });
 
 async function serve(t, options) {
-  const server = await createAppServer(options);
+  const server = await createAppServer({ ...options, adminKey: ADMIN_KEY });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise((resolve) => {
@@ -72,6 +73,14 @@ async function serve(t, options) {
     server.closeAllConnections();
   }));
   return `http://127.0.0.1:${server.address().port}`;
+}
+
+async function authenticate(base) {
+  const response = await fetch(`${base}/api/admin/session`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: ADMIN_KEY })
+  });
+  assert.equal(response.status, 200);
+  return response.headers.get('set-cookie').split(';')[0];
 }
 
 test('seeded sessions shuffle the full list and page without repeats', async (t) => {
@@ -135,6 +144,203 @@ test('API exposes dictionary-backed languages, bounded pages, and static applica
   assert.match(html, /id="wordDisplayContainer"/);
   assert.match(await (await fetch(`${base}/app.js`)).text(), /\/api\/words/);
   assert.equal((await fetch(`${base}/styles.css`, { method: 'HEAD' })).status, 200);
+  assert.equal((await fetch(`${base}/dictionary-editor.js`)).status, 200);
+});
+
+test('dictionary editor searches all entries literally with Unicode case folding and bounded pages', async (t) => {
+  const data = await fixture();
+  const base = await serve(t, { databasePath: data.filename });
+  t.after(data.cleanup);
+  const { languages } = await (await fetch(`${base}/api/dictionary/languages`)).json();
+  assert.equal(languages.find((language) => language.id === 'en').wordCount, 8);
+  const search = async (parameters) => (await fetch(`${base}/api/dictionary?${new URLSearchParams(parameters)}`)).json();
+  const first = await search({ language: 'en', limit: 3 });
+  const second = await search({ language: 'en', offset: 3, limit: 3 });
+  assert.equal(first.total, 8);
+  assert.equal(first.words.length, 3);
+  assert.ok(second.words.every((word) => !first.words.some((previous) => previous.id === word.id)));
+  assert.equal((await search({ language: 'en', q: 'HELLO' })).words[0].word, 'hello');
+  assert.equal((await search({ language: 'ru', q: 'МА' })).words[0].word, 'мама');
+  assert.equal((await search({ language: 'de', q: 'U\u0308BUNG' })).words[0].word, 'übung');
+  assert.equal((await search({ language: 'ja', q: '日本' })).words[0].word, '日本');
+  for (const q of ['%', '_', "' OR 1=1 --"]) assert.equal((await search({ language: 'en', q })).total, 0);
+  for (const query of ['language=xx', 'language=en&offset=-1', 'language=en&limit=101',
+    'language=en&limit=0', 'language=en&offset=9007199254740992', `language=en&q=${'a'.repeat(201)}`]) {
+    assert.equal((await fetch(`${base}/api/dictionary?${query}`)).status, 400, query);
+  }
+});
+
+test('edits persist, add missing metadata, and invalidate cached practice eligibility and shuffles', async (t) => {
+  const data = await fixture();
+  const base = await serve(t, { databasePath: data.filename });
+  const cookie = await authenticate(base);
+  t.after(data.cleanup);
+  const practice = async () => (await (await fetch(`${base}/api/words?language=en&seed=42`)).json());
+  assert.equal((await practice()).total, 3);
+  const update = async (id, values) => {
+    const response = await fetch(`${base}/api/dictionary/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(values)
+    });
+    assert.equal(response.status, 200);
+    return (await response.json()).word;
+  };
+  const values = { word: 'planet', ipa: '/ˈplænɪt/', type: 'danh từ', meaning: 'hành tinh' };
+  const entry = await update(3, values);
+  assert.equal(entry.id, 3);
+  assert.equal(entry.definitionLanguage, 'vi');
+  for (const field of Object.keys(values)) assert.equal(entry[field], values[field]);
+  const batch = await practice();
+  assert.equal(batch.total, 4);
+  assert.equal(batch.words.find((word) => word.id === 3).meaning, 'hành tinh');
+  assert.equal((await (await fetch(`${base}/api/languages`)).json()).languages.find((language) => language.id === 'en').wordCount, 4);
+  await update(3, { word: 'two planets', ipa: '', type: '', meaning: '' });
+  assert.equal((await practice()).total, 3);
+  const reopened = new Dictionary(data.filename, [{ id: 'en' }]);
+  try {
+    const saved = reopened.searchEntries('en', 'two planets').words[0];
+    assert.equal(saved.word, 'two planets');
+    assert.equal(saved.ipa, '');
+    assert.equal(saved.meaning, '');
+  } finally { reopened.close(); }
+});
+
+test('editing shared definitions preserves other words, alternate meanings, IPA, and source metadata', async (t) => {
+  const data = await fixture();
+  const dictionary = new Dictionary(data.filename, [{ id: 'en' }, { id: 'fr' }]);
+  t.after(() => dictionary.close());
+  t.after(data.cleanup);
+  dictionary.db.exec(`
+    ALTER TABLE definitions ADD COLUMN sub_pos TEXT;
+    ALTER TABLE definitions ADD COLUMN links TEXT;
+    UPDATE definitions SET sub_pos = 'greeting', links = 'source-link' WHERE id = 2;
+    CREATE UNIQUE INDEX definition_unique ON definitions(definition, pos, sub_pos);
+    INSERT INTO word_definitions VALUES (5, 6, 2);
+  `);
+  dictionary.updateEntry(1, { word: 'hello', ipa: '/new/', type: 'interjection', meaning: 'Lời chào đã sửa' });
+  assert.equal(dictionary.getWords('en').words[0].meaning, 'Lời chào đã sửa');
+  assert.equal(dictionary.getWords('fr').words[0].meaning, 'Xin chào, chào bạn.');
+  const definition = dictionary.db.prepare('SELECT d.* FROM definitions d JOIN word_definitions wd ON wd.definition_id = d.id WHERE wd.word_id = 1 AND d.definition = ?')
+    .get('Lời chào đã sửa');
+  assert.equal(definition.sub_pos, 'greeting');
+  assert.equal(definition.links, 'source-link');
+  assert.equal(definition.definition_lang, 'vi');
+  assert.equal(dictionary.db.prepare('SELECT count(*) AS count FROM word_definitions WHERE word_id = 1').get().count, 3);
+  assert.equal(dictionary.db.prepare('SELECT ipa FROM pronunciations WHERE id = 3').get().ipa, '/həˈləʊ/');
+  assert.equal(dictionary.db.prepare('SELECT definition FROM definitions WHERE id = 1').get().definition, 'English greeting');
+});
+
+test('failed writes roll back the whole entry and validation leaves the source untouched', async (t) => {
+  const data = await fixture();
+  const dictionary = new Dictionary(data.filename, [{ id: 'en' }]);
+  t.after(() => dictionary.close());
+  t.after(data.cleanup);
+  const original = dictionary.searchEntries('en', 'hello').words[0];
+  const values = { word: 'greeting', ipa: '/new/', type: 'noun', meaning: 'updated' };
+  dictionary.db.exec("CREATE TRIGGER fail_ipa BEFORE UPDATE ON pronunciations BEGIN SELECT RAISE(ABORT, 'test write failed'); END");
+  assert.throws(() => dictionary.updateEntry(1, values), /test write failed/);
+  assert.deepEqual(dictionary.searchEntries('en', 'hello').words[0], original);
+  assert.throws(() => dictionary.updateEntry(1, { ...values, word: "can't" }), { status: 409 });
+  assert.throws(() => dictionary.updateEntry(999, values), { status: 404 });
+  for (const invalid of [null, [], {}, { ...values, word: ' ' }, { ...values, word: 'bad\nword' },
+    { ...values, meaning: 123 }, { ...values, ipa: 'x'.repeat(201) }]) {
+    assert.throws(() => dictionary.updateEntry(1, invalid), { status: 400 });
+  }
+  assert.deepEqual(dictionary.searchEntries('en', 'hello').words[0], original);
+});
+
+test('dictionary write API rejects invalid JSON, foreign origins, duplicate words, and invalid IDs', async (t) => {
+  const data = await fixture();
+  const base = await serve(t, { databasePath: data.filename });
+  const cookie = await authenticate(base);
+  t.after(data.cleanup);
+  const values = { word: 'hello', ipa: '', type: '', meaning: '' };
+  const put = (id, body = JSON.stringify(values), headers = {}) => fetch(`${base}/api/dictionary/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Cookie: cookie, ...headers }, body
+  });
+  assert.equal((await put(1, '{bad json')).status, 400);
+  assert.equal((await put(1, '{}')).status, 400);
+  assert.equal((await put(1, JSON.stringify(values), { 'Content-Type': 'text/plain' })).status, 415);
+  assert.equal((await put(1, JSON.stringify(values), { Origin: 'https://example.com' })).status, 403);
+  assert.equal((await put(1, JSON.stringify(values), { 'Sec-Fetch-Site': 'cross-site' })).status, 403);
+  assert.equal((await put(0)).status, 400);
+  assert.equal((await put(9007199254740992)).status, 400);
+  assert.equal((await put(999)).status, 404);
+  assert.equal((await put(2)).status, 409);
+  const unsupported = await fetch(`${base}/api/dictionary/1`, { method: 'DELETE' });
+  assert.equal(unsupported.status, 405);
+  assert.equal(unsupported.headers.get('allow'), 'PUT');
+});
+
+test('new words persist with optional metadata and refresh cached practice words and language counts', async (t) => {
+  const data = await fixture();
+  const base = await serve(t, { databasePath: data.filename });
+  const cookie = await authenticate(base);
+  t.after(data.cleanup);
+  const practice = async () => (await (await fetch(`${base}/api/words?language=en&seed=42`)).json());
+  assert.equal((await practice()).total, 3);
+  const values = { language: 'en', word: '  cafe\u0301  ', ipa: '/kæˈfeɪ/', type: 'danh từ', meaning: 'quán cà phê' };
+  const response = await fetch(`${base}/api/dictionary`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(values)
+  });
+  assert.equal(response.status, 201);
+  const { word } = await response.json();
+  assert.equal(word.word, 'café');
+  assert.equal(word.language, 'en');
+  assert.equal(word.definitionLanguage, 'vi');
+  assert.equal(word.meaning, values.meaning);
+  assert.equal(word.ipa, values.ipa);
+  const batch = await practice();
+  assert.equal(batch.total, 4);
+  assert.equal(batch.words.find((entry) => entry.id === word.id).word, 'café');
+  assert.equal((await (await fetch(`${base}/api/languages`)).json()).languages.find((language) => language.id === 'en').wordCount, 4);
+  assert.equal((await (await fetch(`${base}/api/dictionary/languages`)).json()).languages.find((language) => language.id === 'en').wordCount, 9);
+  const minimal = await fetch(`${base}/api/dictionary`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ language: 'en', word: 'minimal' })
+  });
+  assert.equal(minimal.status, 201);
+  const minimalWord = (await minimal.json()).word;
+  assert.equal(minimalWord.ipa, '');
+  assert.equal(minimalWord.type, '');
+  assert.equal(minimalWord.meaning, '');
+  const reopened = new Dictionary(data.filename, [{ id: 'en' }]);
+  try {
+    assert.deepEqual({ ...reopened.searchEntries('en', 'café').words[0] }, word);
+    assert.equal(reopened.searchEntries('en', 'minimal').words[0].id, minimalWord.id);
+  } finally { reopened.close(); }
+});
+
+test('new-word API rejects duplicates, invalid input, and cross-site writes', async (t) => {
+  const data = await fixture();
+  const base = await serve(t, { databasePath: data.filename });
+  const cookie = await authenticate(base);
+  t.after(data.cleanup);
+  const post = (values, headers = {}) => fetch(`${base}/api/dictionary`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie, ...headers }, body: JSON.stringify(values)
+  });
+  assert.equal((await post({ language: 'en', word: 'hello' })).status, 409);
+  assert.equal((await post({ language: 'fr', word: 'hello' })).status, 201, 'a word may exist in different languages');
+  for (const values of [null, [], {}, { word: 'planet' }, { language: 'xx', word: 'planet' },
+    { language: 'en', word: ' ' }, { language: 'en', word: 'bad\nword' },
+    { language: 'en', word: 'planet', ipa: 123 }, { language: 'en', word: 'planet', type: 'x'.repeat(101) }]) {
+    assert.equal((await post(values)).status, 400);
+  }
+  assert.equal((await post({ language: 'en', word: 'planet' }, { Origin: 'https://example.com' })).status, 403);
+  assert.equal((await post({ language: 'en', word: 'planet' }, { 'Content-Type': 'text/plain' })).status, 415);
+  assert.equal((await (await fetch(`${base}/api/dictionary?language=en`)).json()).total, 8);
+});
+
+test('failed new-word writes roll back the word and its metadata together', async (t) => {
+  const data = await fixture();
+  const dictionary = new Dictionary(data.filename, [{ id: 'en' }]);
+  t.after(() => dictionary.close());
+  t.after(data.cleanup);
+  dictionary.getWords('en', 0, 100, 42);
+  dictionary.db.exec("CREATE TRIGGER fail_ipa_insert BEFORE INSERT ON pronunciations BEGIN SELECT RAISE(ABORT, 'test insert failed'); END");
+  assert.throws(() => dictionary.createEntry('en', { word: 'planet', meaning: 'hành tinh', type: 'noun', ipa: '/planet/' }), /test insert failed/);
+  assert.equal(dictionary.searchEntries('en', 'planet').total, 0);
+  assert.equal(dictionary.db.prepare('SELECT count(*) AS total FROM definitions').get().total, 4);
+  assert.equal(dictionary.db.prepare('SELECT count(*) AS total FROM word_definitions').get().total, 4);
+  assert.equal(dictionary.getWords('en', 0, 100, 42).total, 3);
 });
 
 test('real dictionary serves all configured languages and preserves source word identity', async (t) => {

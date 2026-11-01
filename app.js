@@ -8,7 +8,7 @@
     'virtualKeyboard', 'wpmDisplay', 'accuracyDisplay', 'countDisplay',
     'layoutBadge', 'currentLayoutName', 'soundToggleBtn', 'soundText',
     'languageLabel', 'sessionStatus', 'progressFill', 'progressLabel',
-    'nextWordBtn', 'restartBtn', 'helpDialog', 'helpBtn', 'closeHelpBtn', 'retryBtn', 'practice'
+    'nextWordBtn', 'restartBtn', 'helpDialog', 'helpBtn', 'closeHelpBtn', 'retryBtn', 'practice', 'practicePage'
   ].map((id) => [id, byId(id)]));
 
   const layouts = {
@@ -57,9 +57,10 @@
   let loadVersion = 0;
   let pointerLanguageChange = false;
   let restorePracticeAfterHelp = false;
+  let pausedAt = null;
 
   function resumeAfterPointer(event) {
-    if (event.detail > 0) ui.practice.focus({ preventScroll: true });
+    if (event.detail > 0 && !ui.practicePage.hidden && !byId('adminDialog')?.open) ui.practice.focus({ preventScroll: true });
   }
 
   function setStatus(text, state) {
@@ -135,7 +136,7 @@
   }
 
   function updateMetrics() {
-    const elapsedMinutes = startTime === null ? 0 : (performance.now() - startTime) / 60000;
+    const elapsedMinutes = startTime === null ? 0 : ((pausedAt ?? performance.now()) - startTime) / 60000;
     ui.wpmDisplay.textContent = elapsedMinutes > 0.05
       ? Math.max(0, Math.round(correctTyped / 5 / elapsedMinutes)) : 0;
     ui.accuracyDisplay.textContent = `${totalTyped ? Math.round(correctTyped / totalTyped * 100) : 100}%`;
@@ -153,6 +154,7 @@
     totalTyped = 0;
     correctTyped = 0;
     startTime = null;
+    pausedAt = ui.practicePage.hidden ? performance.now() : null;
     updateMetrics();
   }
 
@@ -299,7 +301,7 @@
     ui.helpDialog.close();
   });
   ui.helpDialog.addEventListener('close', () => {
-    if (restorePracticeAfterHelp) ui.practice.focus({ preventScroll: true });
+    if (restorePracticeAfterHelp && !ui.practicePage.hidden) ui.practice.focus({ preventScroll: true });
     restorePracticeAfterHelp = false;
   });
   ui.helpDialog.addEventListener('click', (event) => {
@@ -321,7 +323,7 @@
       ui.helpDialog.close();
       return;
     }
-    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing || ui.helpDialog.open) return;
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing || ui.helpDialog.open || byId('adminDialog')?.open || ui.practicePage.hidden) return;
     if (event.target instanceof Element && event.target.closest('button, select, input, textarea, a, [contenteditable="true"], dialog')) return;
     if (event.key === 'Tab' || !words.length) return;
     if (event.key === ' ') {
@@ -371,7 +373,9 @@
         ui.langSelect.append(option);
       }
       ui.langSelect.disabled = false;
-      await switchLanguage(languages[0].id);
+      const id = languages.some((language) => language.id === currentLanguageId) ? currentLanguageId : languages[0].id;
+      ui.langSelect.value = id;
+      await switchLanguage(id);
     } catch {
       ui.wordDisplayContainer.setAttribute('aria-busy', 'false');
       showMessage('Chưa thể tải ngôn ngữ. Vui lòng thử lại.', 'Kết nối bị gián đoạn', true);
@@ -379,5 +383,19 @@
   }
 
   renderKeyboard('qwerty');
+  window.addEventListener('polytype:dictionary-saved', init);
+  window.addEventListener('polytype:viewchange', (event) => {
+    if (event.detail.view === 'dictionary') {
+      clearAdvance();
+      pausedAt ??= performance.now();
+    } else if (pausedAt !== null) {
+      if (startTime !== null) startTime += performance.now() - pausedAt;
+      pausedAt = null;
+      updateMetrics();
+      if (input && input.toLowerCase() === words[wordIndex]?.word.toLowerCase()) {
+        advanceTimer = window.setTimeout(nextWord, 180);
+      }
+    }
+  });
   init();
 })();

@@ -35,7 +35,9 @@
       } catch {
         // Saving preferences is optional; changing the palette is not.
       }
-      if (event.detail > 0) document.getElementById('practice')?.focus({ preventScroll: true });
+      if (event.detail > 0 && !document.getElementById('practicePage')?.hidden) {
+        document.getElementById('practice')?.focus({ preventScroll: true });
+      }
     });
   }
 

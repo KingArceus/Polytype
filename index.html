@@ -7,12 +7,14 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Một không gian yên tĩnh để luyện gõ, học từ vựng và khám phá những ngôn ngữ mới.">
   <title>Polytype — Không gian luyện gõ của bạn</title>
-  <script src="theme.js"></script>
+  <script src="/theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;450;500;550;600;650;700;750;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+  <script src="/admin.js" defer></script>
+  <script src="/dictionary-editor.js" defer></script>
 </head>
 <body>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -36,8 +38,9 @@
     <a class="brand" href="./" aria-label="Polytype, trang chủ"><span class="brand-mark"><svg class="icon"><use href="#icon-keyboard"/></svg></span><span>Poly<span class="brand-light">type</span><small>GÕ CHỮ · MỞ THẾ GIỚI</small></span></a>
     <div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
     <nav class="main-nav" aria-label="Điều hướng chính">
-      <a class="nav-item is-active" href="#practice" aria-current="page" aria-label="Luyện gõ"><svg class="icon" aria-hidden="true"><use href="#icon-keyboard"/></svg><span>Luyện gõ</span><span class="nav-active-dot"></span></a>
-      <a class="nav-item" href="#keyboard" aria-label="Bố cục bàn phím"><svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg><span>Bố cục bàn phím</span></a>
+      <a id="practiceTab" class="nav-item is-active" href="#practice" aria-current="page" aria-label="Luyện gõ"><svg class="icon" aria-hidden="true"><use href="#icon-keyboard"/></svg><span>Luyện gõ</span><span class="nav-active-dot"></span></a>
+      <a id="dictionaryTab" class="nav-item" href="#dictionary" aria-label="Từ điển"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg><span>Từ điển</span></a>
+      <a id="keyboardTab" class="nav-item" href="#keyboard" aria-label="Bố cục bàn phím"><svg class="icon" aria-hidden="true"><use href="#icon-globe"/></svg><span>Bố cục bàn phím</span></a>
       <button class="nav-item" id="helpBtn" type="button" aria-label="Hướng dẫn luyện tập"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg><span>Hướng dẫn luyện tập</span></button>
     </nav>
     <div class="sidebar-note"><div class="letter-art" aria-hidden="true"><span class="letter-one">a</span><span class="letter-two">あ</span><span class="letter-three">ф</span><svg class="icon art-spark"><use href="#icon-spark"/></svg></div><p>Một chút mỗi ngày.<br><strong>Một thế giới rộng hơn.</strong></p><span>Mỗi ngôn ngữ mới bắt đầu<br>từ một phím gõ.</span></div>
@@ -46,7 +49,7 @@
 
   <div class="workspace">
     <header class="topbar">
-      <div class="breadcrumb"><span>Không gian của bạn</span><span class="breadcrumb-slash">/</span><span>Luyện gõ</span></div>
+      <div class="breadcrumb"><span>Không gian của bạn</span><span class="breadcrumb-slash">/</span><span id="currentPageLabel">Luyện gõ</span></div>
       <div class="topbar-actions">
         <button id="soundToggleBtn" class="sound-toggle" type="button" aria-pressed="true" aria-label="Âm thanh bàn phím" title="Bật hoặc tắt âm thanh bàn phím"><svg id="soundIcon" class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m11 4-6 5H2v6h3l6 5V4Z"/><path class="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path class="sound-muted" d="m16 9 6 6m0-6-6 6"/></svg><span id="soundText">Âm thanh bật</span></button>
         <button id="themeToggleBtn" class="theme-toggle" type="button" role="switch" aria-checked="true" aria-label="Giao diện tối" title="Chuyển sang giao diện sáng">
@@ -54,11 +57,13 @@
           <svg class="theme-toggle-sun icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
           <svg class="theme-toggle-moon icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.4 8.5 8.5 0 1 0 20.5 13.5Z"/></svg>
         </button>
-        <span class="topbar-divider"></span><span class="workspace-label"><span class="status-dot"></span>Góc tập trung</span>
+        <button id="adminLogoutBtn" class="dictionary-button" type="button" hidden>Đăng xuất admin</button>
+        <span class="topbar-divider"></span><span class="workspace-label"><span class="status-dot"></span><span id="workspaceModeLabel">Góc tập trung</span></span>
       </div>
     </header>
 
     <main id="mainContent" class="main-content">
+      <div id="practicePage">
       <div class="page-heading"><div><div class="eyebrow">LẶP LẠI NHỎ. TIẾN BỘ LỚN.</div><h1>Mỗi phím gõ, một bước tiến<span>.</span></h1><p>Luyện đôi tay, học thêm từ mới. Theo nhịp của riêng bạn.</p></div><span class="practice-mode"><svg class="icon" aria-hidden="true"><use href="#icon-spark"/></svg>Luyện tập tự do</span></div>
 
       <section class="metrics" aria-label="Kết quả buổi luyện tập">
@@ -79,9 +84,58 @@
         <div class="keyboard-board"><div id="virtualKeyboard" class="virtual-keyboard" aria-label="Bàn phím tham khảo, hiển thị phím cần gõ"></div></div>
         <div class="keyboard-footnote"><span><span class="connection-dot"></span>Kết nối với bàn phím của bạn</span><span><kbd>Backspace</kbd> để sửa<span class="footnote-dot">·</span><kbd>Space</kbd> để đổi từ</span></div>
       </section>
-      <footer class="page-footer"><span>Được tạo cho những đôi tay ham học hỏi.</span><span>Không áp lực. Chỉ có tiến bộ.<svg class="icon" aria-hidden="true"><use href="#icon-spark"/></svg></span></footer>
+      </div>
+
+      <section id="dictionary" class="dictionary-page" aria-labelledby="dictionaryHeading" hidden>
+        <div class="page-heading"><div><div class="eyebrow">TỪ VỰNG CỦA BẠN</div><h1 id="dictionaryHeading" tabindex="-1">Chăm chút từng từ<span>.</span></h1><p>Tìm và khám phá từ vựng dùng trong buổi luyện tập.</p></div><span class="practice-mode"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg>Từ điển</span></div>
+        <form id="dictionarySearchForm" class="dictionary-filters" role="search">
+          <div class="dictionary-field"><label for="dictionaryLanguage">Ngôn ngữ</label><select id="dictionaryLanguage" disabled><option value="">Đang tải...</option></select></div>
+          <div class="dictionary-field dictionary-search"><label for="dictionarySearch">Tìm từ vựng</label><input id="dictionarySearch" type="search" maxlength="200" placeholder="Nhập từ cần tìm..." autocomplete="off"></div>
+          <button id="dictionarySearchBtn" class="dictionary-button" type="submit">Tìm kiếm</button>
+        </form>
+        <div class="dictionary-grid">
+          <section class="dictionary-results" aria-label="Danh sách từ vựng">
+            <div class="dictionary-list-heading"><h2>Danh sách từ</h2><div class="dictionary-list-actions"><span id="dictionaryCount"></span><button id="dictionaryAddBtn" class="dictionary-button" type="button" disabled hidden>Thêm từ mới</button></div></div>
+            <p id="dictionaryStatus" class="dictionary-status" role="status">Chọn ngôn ngữ để xem từ vựng.</p>
+            <button id="dictionaryRetryBtn" class="dictionary-button" type="button" hidden>Thử tải lại</button>
+            <ul id="dictionaryList" class="dictionary-list" aria-label="Chọn một từ để xem chi tiết"></ul>
+            <div class="dictionary-pagination"><button id="dictionaryPrevBtn" class="dictionary-button" type="button" disabled>Trước</button><span id="dictionaryPageLabel">0 từ</span><button id="dictionaryNextBtn" class="dictionary-button" type="button" disabled>Sau</button></div>
+          </section>
+          <section class="dictionary-editor" aria-labelledby="dictionaryEditHeading">
+            <div class="dictionary-list-heading"><h2 id="dictionaryEditHeading" tabindex="-1">Word detail</h2><span id="dictionaryDirty" class="dictionary-dirty" hidden>Chưa lưu</span></div>
+            <p id="dictionaryEmpty" class="dictionary-status">Chọn một từ trong danh sách để bắt đầu.</p>
+            <form id="dictionaryEditForm" hidden>
+              <div class="dictionary-field"><label for="editWord">Từ vựng</label><input id="editWord" name="word" required maxlength="200" autocomplete="off" readonly></div>
+              <div class="dictionary-field"><label for="editIpa">Phiên âm IPA</label><input id="editIpa" name="ipa" maxlength="200" autocomplete="off" readonly></div>
+              <div class="dictionary-field"><label for="editType">Từ loại</label><input id="editType" name="type" maxlength="100" autocomplete="off" readonly></div>
+              <div class="dictionary-field"><label for="editMeaning">Nghĩa <span id="editMeaningLanguage"></span></label><textarea id="editMeaning" name="meaning" rows="5" maxlength="10000" readonly></textarea></div>
+              <p id="dictionaryHint" class="dictionary-hint">Nghĩa ưu tiên tiếng Việt, sau đó tiếng Anh.</p>
+              <p id="dictionarySaveStatus" class="dictionary-save-status" role="status" tabindex="-1"></p>
+              <div id="dictionaryFormActions" class="dictionary-form-actions" hidden><button id="dictionarySaveBtn" class="dictionary-button dictionary-button--primary" type="submit" disabled hidden>Lưu thay đổi</button><button id="dictionaryCancelBtn" class="dictionary-button" type="button" disabled hidden>Hoàn tác</button></div>
+            </form>
+          </section>
+        </div>
+      </section>
+      <footer class="page-footer">
+        <div class="data-credit">
+          Dữ liệu từ điển do <a href="https://dict.minhqnd.com/" target="_blank" rel="noopener noreferrer">@minhqnd · dict.minhqnd.com</a> cung cấp,
+          theo giấy phép <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license noopener noreferrer">CC BY-SA 4.0</a>.
+          Polytype chọn lọc từ cho bài luyện tập và hỗ trợ chỉnh sửa dữ liệu.
+        </div>
+        <span>Được tạo cho những đôi tay ham học hỏi. <a id="adminAccessLink" class="admin-access-link" href="/admin/#dictionary">Admin</a></span><span>Không áp lực. Chỉ có tiến bộ.<svg class="icon" aria-hidden="true"><use href="#icon-spark"/></svg></span>
+      </footer>
     </main>
   </div>
+
+  <dialog id="adminDialog" class="help-dialog admin-dialog" aria-labelledby="adminTitle" aria-describedby="adminDescription">
+    <h2 id="adminTitle">Admin access</h2>
+    <p id="adminDescription">Nhập khóa quản trị để thêm và chỉnh sửa từ vựng.</p>
+    <form id="adminLoginForm" class="admin-login-form">
+      <div class="dictionary-field"><label for="adminKey">Admin key</label><input id="adminKey" name="admin-key" type="password" required maxlength="1024" autocomplete="current-password" spellcheck="false" autofocus></div>
+      <p id="adminLoginStatus" class="dictionary-save-status" role="status"></p>
+      <div class="dictionary-form-actions"><button id="adminLoginBtn" class="dictionary-button dictionary-button--primary" type="submit">Mở khóa admin</button><a class="dictionary-button" href="/#dictionary">Về bản công khai</a></div>
+    </form>
+  </dialog>
 
   <dialog id="helpDialog" class="help-dialog" aria-labelledby="helpTitle">
     <div class="dialog-heading"><span class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#icon-book"/></svg></span><button id="closeHelpBtn" class="icon-button" type="button" aria-label="Đóng hướng dẫn"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
