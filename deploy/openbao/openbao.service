@@ -1,0 +1,32 @@
+[Unit]
+Description=OpenBao secret storage for Polytype
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=openbao
+Group=openbao
+ExecStart=/usr/local/bin/bao server -config=/etc/openbao/server.hcl
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillSignal=SIGINT
+StateDirectory=openbao
+StateDirectoryMode=0700
+LogsDirectory=openbao
+LogsDirectoryMode=0700
+UMask=0077
+LimitCORE=0
+MemorySwapMax=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

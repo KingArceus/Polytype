@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, rmdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
@@ -59,7 +59,8 @@ test('public dictionary reads remain available while all writes require an authe
     assert.doesNotMatch(await response.text(), new RegExp(KEY));
     if (route.startsWith('/admin')) assert.equal(response.headers.get('cache-control'), 'no-store');
   }
-  for (const route of ['/admin-auth.mjs', '/server.mjs', '/.env', '/test/admin.test.mjs']) {
+  for (const route of ['/admin-auth.mjs', '/server.mjs', '/.env', '/test/admin.test.mjs',
+    '/openbao.mjs', '/deploy/openbao/app.env', '/run/polytype-secrets/admin-key']) {
     assert.equal((await fetch(`${base}${route}`)).status, 404);
   }
 });
@@ -140,14 +141,18 @@ test('repeated incorrect keys are throttled by connection address until the cool
   assert.equal((await login()).status, 200);
 });
 
-test('a server-side key file is supported and TLS deployments can require secure cookies', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'polytype-key-'));
-  const keyFile = join(directory, 'admin.key');
-  await writeFile(keyFile, `${KEY}\n`);
-  t.after(async () => { await rm(keyFile); await rmdir(directory); });
-  const { base, login } = await serve(t, { adminKey: undefined, adminKeyFile: keyFile, adminSecureCookie: true });
+test('TLS deployments can require secure cookies without a local admin-key file', async (t) => {
+  const { base, login } = await serve(t, { adminSecureCookie: true });
   const response = await login();
   assert.equal(response.status, 200);
   assert.match(response.headers.get('set-cookie'), /; Secure/);
   assert.equal((await fetch(`${base}/admin.key`)).status, 404);
+});
+
+test('production startup rejects environment and file admin-key sources', async () => {
+  for (const openBaoEnv of [
+    { POLYTYPE_ADMIN_KEY: KEY }, { POLYTYPE_ADMIN_KEY_FILE: '/must/not/be/read' }
+  ]) {
+    await assert.rejects(createAppServer({ openBaoEnv }), /only in OpenBao/);
+  }
 });

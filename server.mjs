@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join, dirname } from 'node:path';
 import { Dictionary } from './dictionary.mjs';
 import { AdminAuth } from './admin-auth.mjs';
+import { readOpenBaoAdminKey } from './openbao.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const staticFiles = new Map([
@@ -47,13 +48,14 @@ async function readJson(request) {
 
 export async function createAppServer({
   databasePath = join(root, 'data/dictionary.db'), adminKey,
-  adminKeyFile = process.env.POLYTYPE_ADMIN_KEY_FILE,
+  openBaoEnv = process.env,
   adminSecureCookie = process.env.POLYTYPE_ADMIN_SECURE_COOKIE === 'true',
   adminSessionTtlMs, adminNow
 } = {}) {
-  const key = adminKey !== undefined ? adminKey : adminKeyFile
-    ? (await readFile(adminKeyFile, 'utf8')).trim() : process.env.POLYTYPE_ADMIN_KEY || '';
-  const admin = new AdminAuth({ key, secureCookie: adminSecureCookie, sessionTtlMs: adminSessionTtlMs, now: adminNow });
+  const admin = new AdminAuth({
+    key: adminKey !== undefined ? adminKey : await readOpenBaoAdminKey(openBaoEnv),
+    secureCookie: adminSecureCookie, sessionTtlMs: adminSessionTtlMs, now: adminNow
+  });
   const { languages } = JSON.parse(await readFile(join(root, 'languages.json'), 'utf8'));
   const dictionary = new Dictionary(databasePath, languages);
   const server = createServer(async (request, response) => {

@@ -1,13 +1,14 @@
 # Polytype
 
 Requires Node.js 24 or newer. No package installation is needed.
+For local public-app development:
 
 ```sh
 npm start
 ```
 
 Open http://127.0.0.1:4173. Use `PORT` and `HOST` to change the listening address.
-The server automatically restarts when its JavaScript modules change.
+The development server automatically restarts when its JavaScript modules change.
 The app must run through this server; a static file server cannot provide the dictionary API.
 
 Words come directly from `data/dictionary.db`, opened with Node's built-in SQLite module.
@@ -19,7 +20,7 @@ Definitions prefer Vietnamese, then English; IPA and parts of speech appear when
 
 Practice uses single words of 2–24 characters, with optional apostrophes or hyphens.
 Spaces remain the skip shortcut. Japanese practice uses existing Latin-script romaji entries;
-no transliteration or sample vocabulary is generated. The original CSV files are no longer used.
+no transliteration or sample vocabulary is generated.
 
 Open the **Từ điển** tab to browse all dictionary entries by language, search for a word,
 and view its spelling, displayed IPA, part of speech, and preferred definition under **Word detail**.
@@ -37,44 +38,32 @@ Run checks with `npm test`.
 
 ## Admin key setup
 
-Set either `POLYTYPE_ADMIN_KEY` or `POLYTYPE_ADMIN_KEY_FILE` on the server before starting it.
-The file option reads a plain-text key from the named file at startup, trims surrounding whitespace,
-and takes precedence if both variables are set. Without a configured key,
-the public app still works, but admin sign-in and dictionary writes stay disabled.
-Use a long, randomly generated key stored in your password manager. Restart the server after rotating it;
-restarting also clears active admin sessions.
+Store `POLYTYPE_ADMIN_KEY` only in **OpenBao Secure Secret Storage**, using KV v2
+at `secret/polytype/admin`. Follow the [step-by-step Linux guide](docs/openbao-linux.md)
+for installation, TLS, policies, application authentication, rotation, and reboot recovery.
 
-For local Windows use, prompt for the key without placing its value in PowerShell command history:
+The server fetches the key directly from OpenBao over verified HTTPS at startup,
+keeps its sign-in hash in memory, and revokes its OpenBao token after the read.
+OpenBao is the key's only persistent store.
 
-```powershell
-$polytypeKey = Read-Host 'Polytype admin key' -AsSecureString
-$env:POLYTYPE_ADMIN_KEY = [System.Net.NetworkCredential]::new('', $polytypeKey).Password
-try { npm.cmd start }
-finally {
-  Remove-Item Env:POLYTYPE_ADMIN_KEY -ErrorAction SilentlyContinue
-  $polytypeKey.Dispose()
-}
-```
+The public runtime settings are `POLYTYPE_OPENBAO_ADDR`, `POLYTYPE_OPENBAO_ROLE_ID`,
+`POLYTYPE_OPENBAO_CA_FILE` (a public CA certificate), and optionally
+`POLYTYPE_OPENBAO_KV_PATH` and `POLYTYPE_OPENBAO_TIMEOUT_MS`. Each start also needs
+an in-memory `POLYTYPE_OPENBAO_SECRET_ID`, issued for one AppRole login. The client
+removes this bootstrap credential from its environment before making requests.
 
-Then open http://127.0.0.1:4173/admin/. The browser receives a one-hour session cookie marked
-`HttpOnly` and `SameSite=Strict`; the key is not saved in browser storage. Use HTTPS for hosted access
-and set `POLYTYPE_ADMIN_SECURE_COOKIE=true` when HTTPS terminates at Nginx or another reverse proxy.
-Leave that setting off for local HTTP. See [OWASP session guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html).
-The reverse proxy must preserve the public Host header (Nginx: `proxy_set_header Host $http_host;`)
-so the server can verify the origin of admin requests.
+Without OpenBao configuration, the public app works and admin writes remain
+disabled. Partial configuration or any OpenBao read/authentication failure stops
+startup. Restart after rotating the key; restarting also clears admin sessions.
+A new one-use credential is required for each start, so the supplied Linux service
+uses manual activation instead of automatic restarts.
 
-Recommended storage options:
-
-- **Local development:** Keep the key in a password manager and use the masked prompt above.
-  Environment variables are a convenient runtime fallback, but are not encrypted storage and can appear in diagnostics.
-- **A single server:** Keep a read-only secret file outside the repository and web root, with access limited
-  to the service account, and point `POLYTYPE_ADMIN_KEY_FILE` at it. A systemd credential can supply this file as shown below.
-- **Hosted deployments:** Store the key in the platform's secret manager and mount it or inject it at runtime
-  with access limited to the application service. Examples include AWS Secrets Manager and Azure Key Vault.
-
-Keep the key out of source files, Git, URLs, frontend/build variables, logs, and browser storage.
-These choices follow [OWASP secrets guidance](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
-and [AWS Secrets Manager best practices](https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html).
+Open `/admin/` and enter the key retrieved on demand from OpenBao. The browser
+receives a one-hour session cookie marked `HttpOnly` and `SameSite=Strict`; it does
+not save the key in browser storage. Use HTTPS for hosted access and set
+`POLYTYPE_ADMIN_SECURE_COOKIE=true` when HTTPS terminates at a reverse proxy.
+The proxy must preserve the public Host header (Nginx:
+`proxy_set_header Host $http_host;`) for admin-origin validation.
 
 ## Re-deploy to an SSH server
 
@@ -88,8 +77,9 @@ These steps assume the app is already installed at `/opt/polytype`, runs as the
    ```powershell
    cd C:\Work\Repos\Polytype
    npm.cmd test
-   ssh root@SERVER_IP "mkdir -p /root/polytype-upload"
-   scp package.json server.mjs admin-auth.mjs dictionary.mjs index.html app.js admin.js dictionary-editor.js theme.js styles.css languages.json root@SERVER_IP:/root/polytype-upload/
+   ssh root@SERVER_IP "mkdir -p /root/polytype"
+   scp package.json server.mjs openbao.mjs admin-auth.mjs dictionary.mjs index.html app.js admin.js dictionary-editor.js theme.js styles.css languages.json root@SERVER_IP:/root/polytype/
+   scp -r deploy/openbao root@SERVER_IP:/root/polytype/
    ssh root@SERVER_IP
    ```
 
@@ -106,9 +96,9 @@ These steps assume the app is already installed at `/opt/polytype`, runs as the
    Continue only if the backup succeeds:
 
    ```bash
-   sudo cp /root/polytype-upload/{package.json,server.mjs,admin-auth.mjs,dictionary.mjs,index.html,app.js,admin.js,dictionary-editor.js,theme.js,styles.css,languages.json} /opt/polytype/
-   sudo chown root:polytype /opt/polytype/{package.json,server.mjs,admin-auth.mjs,dictionary.mjs,index.html,app.js,admin.js,dictionary-editor.js,theme.js,styles.css,languages.json}
-   sudo chmod 640 /opt/polytype/{package.json,server.mjs,admin-auth.mjs,dictionary.mjs,index.html,app.js,admin.js,dictionary-editor.js,theme.js,styles.css,languages.json}
+   sudo cp /root/polytype/{package.json,server.mjs,openbao.mjs,admin-auth.mjs,dictionary.mjs,index.html,app.js,admin.js,dictionary-editor.js,theme.js,styles.css,languages.json} /opt/polytype/
+   sudo chown root:polytype /opt/polytype/{package.json,server.mjs,openbao.mjs,admin-auth.mjs,dictionary.mjs,index.html,app.js,admin.js,dictionary-editor.js,theme.js,styles.css,languages.json}
+   sudo chmod 640 /opt/polytype/{package.json,server.mjs,openbao.mjs,admin-auth.mjs,dictionary.mjs,index.html,app.js,admin.js,dictionary-editor.js,theme.js,styles.css,languages.json}
    ```
 
    Keep the server's `data/dictionary.db`: it contains edits made through the app
@@ -128,32 +118,17 @@ These steps assume the app is already installed at `/opt/polytype`, runs as the
    sudo systemctl daemon-reload
    ```
 
-   The systemd override allows database writes when the service uses
-   `ProtectSystem=strict` from the initial deployment instructions.
+   This allows SQLite writes when the service uses `ProtectSystem=strict`.
 
-4. Provision the admin key before enabling admin sign-in. Keep the raw key in
-   `/etc/polytype/admin-key`, owned by root with mode `600`, outside `/opt/polytype`.
-   Supply it using your secret-management process; do not put its value in the service unit or shell commands.
-   With systemd 247 or newer, add a credential override:
-
-   ```bash
-   sudo tee /etc/systemd/system/polytype.service.d/admin.conf > /dev/null <<'EOF'
-   [Service]
-   LoadCredential=admin-key:/etc/polytype/admin-key
-   Environment=POLYTYPE_ADMIN_KEY_FILE=%d/admin-key
-   Environment=POLYTYPE_ADMIN_SECURE_COOKIE=true
-   EOF
-   sudo systemctl daemon-reload
-   ```
-
-   systemd makes a private, read-only copy available to the service. The `Secure` cookie setting assumes
-   your public Nginx endpoint uses HTTPS. See [systemd credential documentation](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#LoadCredential=ID%5B:PATH%5D).
-   If admin access is not needed, skip this override and keep writes disabled.
+4. Configure OpenBao using the [Linux implementation guide](docs/openbao-linux.md).
+   Store the admin key only in KV v2; provision public connection settings and
+   supply a fresh one-use AppRole SecretID in memory when starting the app.
 
 5. Start the service and verify it:
 
    ```bash
-   sudo systemctl start polytype
+   # Run the start_polytype function from the OpenBao guide with an operator login.
+   start_polytype
    sudo systemctl status polytype --no-pager
    curl -f http://127.0.0.1:4173/api/languages
    ```
